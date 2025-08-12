@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Islamabad Weather App</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Montserrat', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            margin-top: 80px;
+            background: #b3e0ff url('https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1920&q=90') no-repeat center center fixed;
+            background-size: cover;
+        }
+        .weather-container {
+            border-radius: 20px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            padding: 40px 30px;
+            max-width: 350px;
+            width: 100%;
+            text-align: center;
+            background: rgba(255,255,255,0.9);
+            transition: background 0.5s;
+            margin-top: 80px;
+        }
+        .city {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 10px;
+        }
+        .date {
+            font-size: 1rem;
+            color: #fff;
+            margin-bottom: 20px;
+        }
+        .temp {
+            font-size: 3rem;
+            font-weight: 700;
+            color: #FFA726;
+            margin-bottom: 10px;
+        }
+        .weather {
+            font-size: 1.2rem;
+            color: #fff;
+            margin-bottom: 20px;
+        }
+        .details {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+            gap: 20px;
+        }
+        .details div {
+            background: #e0eafc;
+            border-radius: 10px;
+            padding: 10px;
+            width: 45%;
+            font-size: 1rem;
+            color: #2d3a4b;
+        }
+        .icon {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 10px;
+        }
+        @media (max-width: 500px) {
+            .weather-container {
+                padding: 20px 10px;
+            }
+            .temp {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="weather-container" id="weather">
+        <div class="city">Islamabad, Pakistan</div>
+        <div class="date" id="date"></div>
+        <img class="icon" id="icon" src="" alt="Weather Icon" style="display:none;">
+        <div class="temp" id="temp">--°C</div>
+        <div class="weather" id="desc">Loading...</div>
+        <div class="details">
+            <div id="humidity">Humidity: --%</div>
+            <div id="wind">Wind: -- km/h</div>
+        </div>
+    </div>
+    <script>
+        function formatDate(date) {
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            return date.toLocaleDateString('en-US', options);
+        }
+        document.getElementById('date').textContent = formatDate(new Date());
+
+    const latitude = 33.6844;
+    const longitude = 73.0479;
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true&hourly=relative_humidity_2m`;
+
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                const weather = data.current_weather;
+                document.getElementById('temp').textContent = `${Math.round(weather.temperature)}°C`;
+                // Open-Meteo does not provide a description, so use weathercode
+                const weatherCodes = {
+                    0: "Clear sky",
+                    1: "Mainly clear",
+                    2: "Partly cloudy",
+                    3: "Overcast",
+                    45: "Fog",
+                    48: "Depositing rime fog",
+                    51: "Light drizzle",
+                    53: "Moderate drizzle",
+                    55: "Dense drizzle",
+                    56: "Light freezing drizzle",
+                    57: "Dense freezing drizzle",
+                    61: "Slight rain",
+                    63: "Moderate rain",
+                    65: "Heavy rain",
+                    66: "Light freezing rain",
+                    67: "Heavy freezing rain",
+                    71: "Slight snow fall",
+                    73: "Moderate snow fall",
+                    75: "Heavy snow fall",
+                    77: "Snow grains",
+                    80: "Slight rain showers",
+                    81: "Moderate rain showers",
+                    82: "Violent rain showers",
+                    85: "Slight snow showers",
+                    86: "Heavy snow showers",
+                    95: "Thunderstorm",
+                    96: "Thunderstorm with slight hail",
+                    99: "Thunderstorm with heavy hail"
+                };
+                document.getElementById('desc').textContent = weatherCodes[weather.weathercode] || "Unknown";
+                // Humidity from hourly data (current hour)
+                let humidity = '--';
+                if (data.hourly && data.hourly.relative_humidity_2m && data.hourly.time) {
+                    const now = new Date();
+                    const hourStr = now.toISOString().slice(0, 13) + ':00';
+                    const idx = data.hourly.time.indexOf(hourStr);
+                    if (idx !== -1) {
+                        humidity = data.hourly.relative_humidity_2m[idx];
+                    }
+                }
+                document.getElementById('humidity').textContent = `Humidity: ${humidity}%`;
+                document.getElementById('wind').textContent = `Wind: ${Math.round(weather.windspeed)} km/h`;
+                // Icon logic (simple: clear/cloudy/rain/snow/thunder)
+                const iconImg = document.getElementById('icon');
+                let iconUrl = '';
+                let boxBg = 'rgba(255,255,255,0.9)';
+                // Time of day
+                const hour = new Date().getHours();
+                let isDay = hour >= 6 && hour < 18;
+                // Weather-based backgrounds
+                if ([0,1].includes(weather.weathercode)) {
+                    iconUrl = 'https://cdn-icons-png.flaticon.com/512/869/869869.png'; // clear
+                    boxBg = isDay ? 'rgba(255,255,255,0.9)' : 'rgba(44,62,80,0.85)';
+                } else if ([2,3,45,48].includes(weather.weathercode)) {
+                    iconUrl = 'https://cdn-icons-png.flaticon.com/512/414/414825.png'; // cloudy
+                    boxBg = isDay ? 'rgba(200,220,255,0.95)' : 'rgba(52,73,94,0.85)';
+                } else if ([51,53,55,56,57,61,63,65,66,67,80,81,82].includes(weather.weathercode)) {
+                    iconUrl = 'https://cdn-icons-png.flaticon.com/512/414/414974.png'; // rain
+                    boxBg = isDay ? 'rgba(180,210,230,0.95)' : 'rgba(34,49,63,0.85)';
+                } else if ([71,73,75,77,85,86].includes(weather.weathercode)) {
+                    iconUrl = 'https://cdn-icons-png.flaticon.com/512/414/414968.png'; // snow
+                    boxBg = isDay ? 'rgba(240,248,255,0.95)' : 'rgba(189,195,199,0.85)';
+                } else if ([95,96,99].includes(weather.weathercode)) {
+                    iconUrl = 'https://cdn-icons-png.flaticon.com/512/414/414972.png'; // thunder
+                    boxBg = isDay ? 'rgba(255,230,180,0.95)' : 'rgba(241,196,15,0.85)';
+                }
+                if (iconUrl) {
+                    iconImg.src = iconUrl;
+                    iconImg.style.display = 'inline-block';
+                } else {
+                    iconImg.style.display = 'none';
+                }
+                // Set weather container background
+                document.getElementById('weather').style.background = boxBg;
+            })
+            .catch(() => {
+                document.getElementById('desc').textContent = 'Unable to fetch weather data.';
+            });
+    </script>
+    <footer style="position:fixed;left:0;bottom:0;width:100%;text-align:center;margin-bottom:10px;padding:2px 0 4px 0;color:#fffefe;font-size:0.85em;background:transparent;z-index:100;">
+        &copy; 2025 Waqar Nadeem. All rights reserved.<br>
+        This game and its code are licensed and protected. Unauthorized use, reproduction or distribution is prohibited.
+    </footer>
+</body>
+</html>
